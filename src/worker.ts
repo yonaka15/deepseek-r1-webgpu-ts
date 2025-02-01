@@ -16,20 +16,21 @@ import {
 // Types for messages
 type WorkerMessageType = "check" | "load" | "generate" | "interrupt" | "reset";
 
-interface WorkerMessage {
+export interface WorkerMessage {
   type: WorkerMessageType;
   data?: unknown;
 }
 
-interface LoadingStatus {
+export interface LoadingStatus {
   status: "loading" | "initiate" | "progress" | "done" | "error" | "ready";
   file?: string;
   progress?: number;
   total?: number;
   data?: string;
+  error?: string;
 }
 
-interface GenerationStatus {
+export interface GenerationStatus {
   status: "update" | "start" | "complete" | "error";
   output?: string | string[];
   tps?: number;
