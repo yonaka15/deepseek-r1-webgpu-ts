@@ -2,29 +2,26 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AlertCircle } from "lucide-react";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
+import ThinkingMessage from "./components/ThinkingMessage";
 import type { ChatMessageProps } from "./components/ChatMessage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MathJaxContext } from "better-react-mathjax";
-
-// MathJaxの設定
-const mathJaxConfig = {
-  loader: { load: ["[tex]/html"] },
-  tex: {
-    packages: { "[+]": ["html"] },
-    inlineMath: [["$", "$"]],
-    displayMath: [["$$", "$$"]],
-  },
-};
 
 type WorkerStatus = "initializing" | "ready" | "loading" | "error";
 
+interface MessageState {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  status: "complete" | "thinking" | "raw";
+}
+
 const App: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessageProps[]>([]);
+  const [messages, setMessages] = useState<MessageState[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workerStatus, setWorkerStatus] =
     useState<WorkerStatus>("initializing");
-  const [currentOutput, setCurrentOutput] = useState<string>("");
+  const [thinkingContent, setThinkingContent] = useState<string>("");
   const workerRef = useRef<Worker | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,7 +36,6 @@ const App: React.FC = () => {
 
     workerRef.current = worker;
 
-    // メッセージハンドラ
     const handleWorkerMessage = (e: MessageEvent) => {
       if (!mounted) return;
 
@@ -68,12 +64,12 @@ const App: React.FC = () => {
 
         case "start":
           setIsLoading(true);
-          setCurrentOutput("");
+          setThinkingContent("");
           break;
 
         case "update":
           if (output) {
-            setCurrentOutput((prev) => prev + output);
+            setThinkingContent((prev) => prev + output);
           }
           break;
 
@@ -87,9 +83,10 @@ const App: React.FC = () => {
                 role: "assistant",
                 content: finalOutput,
                 timestamp: new Date().toLocaleTimeString(),
+                status: "complete",
               },
             ]);
-            setCurrentOutput("");
+            setThinkingContent("");
           }
           break;
       }
@@ -130,21 +127,21 @@ const App: React.FC = () => {
         return;
       }
 
-      // 新しいメッセージを作成
-      const newMessage = {
-        role: "user" as const,
-        content,
+      const newMessage: MessageState = {
+        role: "user",
+        content: content,
         timestamp: new Date().toLocaleTimeString(),
+        status: "raw",
       };
 
-      // メッセージをステートに追加
       setMessages((prev) => [...prev, newMessage]);
 
-      // すべてのメッセージをWorkerに送信
-      const messageHistory = [...messages, newMessage].map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      const messageHistory = [...messages, { role: "user", content }].map(
+        (msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })
+      );
 
       try {
         workerRef.current.postMessage({
@@ -165,81 +162,73 @@ const App: React.FC = () => {
     workerRef.current.postMessage({ type: "interrupt" });
   }, [isLoading]);
 
-  // スクロール処理
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    });
-  }, [messages, currentOutput]);
-
   return (
-    <MathJaxContext config={mathJaxConfig}>
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
-        <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              DeepSeek Chat
-            </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Powered by WebGPU
-            </p>
-          </div>
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            DeepSeek Chat
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Powered by WebGPU
+          </p>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                workerStatus === "ready"
-                  ? "bg-green-500"
-                  : workerStatus === "error"
-                  ? "bg-red-500"
-                  : "bg-yellow-500"
-              }`}
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              workerStatus === "ready"
+                ? "bg-green-500"
+                : workerStatus === "error"
+                ? "bg-red-500"
+                : "bg-yellow-500"
+            }`}
+          />
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            {workerStatus.charAt(0).toUpperCase() + workerStatus.slice(1)}
+          </span>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          {messages.map((msg, idx) => (
+            <ChatMessage
+              key={`${idx}-${msg.timestamp}`}
+              role={msg.role}
+              content={msg.content}
+              timestamp={msg.timestamp}
             />
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              {workerStatus.charAt(0).toUpperCase() + workerStatus.slice(1)}
-            </span>
-          </div>
-        </header>
+          ))}
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto">
-            {messages.map((msg, idx) => (
-              <ChatMessage key={`${idx}-${msg.timestamp}`} {...msg} />
-            ))}
+          {isLoading && thinkingContent && (
+            <ThinkingMessage content={thinkingContent} />
+          )}
 
-            {currentOutput && (
-              <ChatMessage
-                role="assistant"
-                content={currentOutput}
-                timestamp={new Date().toLocaleTimeString()}
-              />
-            )}
+          {error && (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertCircle className="w-4 h-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
 
-            {error && (
-              <div className="p-4">
-                <Alert variant="destructive">
-                  <AlertCircle className="w-4 h-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </div>
-            )}
+          <div ref={messagesEndRef} />
+        </div>
+      </main>
 
-            <div ref={messagesEndRef} />
-          </div>
-        </main>
-
-        <div className="border-t border-gray-200 dark:border-gray-800">
-          <div className="max-w-4xl mx-auto">
-            <ChatInput
-              onSend={handleSendMessage}
-              onStop={handleStop}
-              disabled={workerStatus !== "ready"}
-              loading={isLoading}
-            />
-          </div>
+      <div className="border-t border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto">
+          <ChatInput
+            onSend={handleSendMessage}
+            onStop={handleStop}
+            disabled={workerStatus !== "ready"}
+            loading={isLoading}
+          />
         </div>
       </div>
-    </MathJaxContext>
+    </div>
   );
 };
 

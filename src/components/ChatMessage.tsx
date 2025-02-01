@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import { MathJaxContext, MathJax } from "better-react-mathjax";
-import {
-  MessageSquare,
-  Bot,
-  User,
-  Brain,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { Bot, User, Brain, ChevronDown, ChevronRight } from "lucide-react";
 
 const MarkdownContent = React.lazy(() => import("./MarkdownContent"));
 
@@ -17,6 +9,32 @@ export interface ChatMessageProps {
   timestamp?: string;
 }
 
+// メッセージを前処理する関数
+const processContent = (
+  content: string
+): {
+  thinking: string;
+  response: string;
+} => {
+  // タグとユーザーメッセージを削除
+  content = content
+    .replace(/<｜User｜>.*?<｜Assistant｜>/s, "") // ユーザーメッセージを含むタグを削除
+    .replace(/<｜Assistant｜>/g, "") // 残りのAssistantタグを削除
+    .trim();
+
+  // 思考プロセスの抽出
+  const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+  const thinking = thinkMatch ? thinkMatch[1].trim() : "";
+
+  // レスポンスから<think>タグを除去
+  let response = content.replace(/<think>[\s\S]*?<\/think>/, "").trim();
+
+  return {
+    thinking: thinking || "",
+    response: response || content.trim(),
+  };
+};
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
@@ -25,53 +43,45 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [showProcess, setShowProcess] = useState(false);
   const isAssistant = role === "assistant";
 
-  // Split content for assistant messages
-  const match = isAssistant
-    ? content.match(/<\|User\|>(.*?)<\|Assistant\|>(.*)/s)
-    : null;
-  const hasThinkingProcess = match !== null;
-  const process = match ? match[1].trim() : "";
-  const response = match ? match[2].trim() : content;
+  // コンテンツを処理
+  const { thinking, response } = processContent(content);
+  const hasThinkingProcess = isAssistant && thinking.length > 0;
 
   return (
     <div
       className={`flex gap-4 px-4 py-6 transition-colors ${
-        isAssistant
-          ? "bg-gray-50 dark:bg-gray-800"
-          : "bg-white dark:bg-gray-900"
+        isAssistant ? "bg-gray-50" : "bg-white"
       }`}
     >
       <div className="flex-shrink-0">
         {isAssistant ? (
-          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-blue-600" />
           </div>
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-            <User className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+            <User className="w-5 h-5 text-green-600" />
           </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-2">
-          <span className="font-medium text-gray-900 dark:text-gray-100">
+          <span className="font-medium text-gray-900">
             {isAssistant ? "Assistant" : "You"}
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {timestamp}
-          </span>
+          <span className="text-sm text-gray-500">{timestamp}</span>
         </div>
 
         <div className="space-y-4">
           {hasThinkingProcess && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="rounded-lg border border-gray-200">
               <button
                 onClick={() => setShowProcess(!showProcess)}
-                className="w-full px-4 py-2 flex items-center gap-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="w-full px-4 py-2 flex items-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors"
               >
-                <Brain className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Brain className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">
                   Thinking Process
                 </span>
                 {showProcess ? (
@@ -82,29 +92,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </button>
 
               {showProcess && (
-                <div className="p-4 bg-white dark:bg-gray-900">
-                  <MathJax>
+                <div className="p-4 bg-white">
+                  <div className="prose max-w-none">
                     <React.Suspense fallback={<div>Loading...</div>}>
-                      <MarkdownContent content={process} />
+                      <MarkdownContent content={thinking} />
                     </React.Suspense>
-                  </MathJax>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
           <div
-            className={`rounded-lg p-4 ${
+            className={`p-4 rounded-lg ${
               isAssistant
-                ? "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+                ? "bg-white border border-gray-200"
                 : "bg-blue-500 text-white"
             }`}
           >
-            <MathJax>
+            <div className="prose max-w-none">
               <React.Suspense fallback={<div>Loading...</div>}>
-                <MarkdownContent content={isAssistant ? response : content} />
+                <MarkdownContent content={response} />
               </React.Suspense>
-            </MathJax>
+            </div>
           </div>
         </div>
       </div>

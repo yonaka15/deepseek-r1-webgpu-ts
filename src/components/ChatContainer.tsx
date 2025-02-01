@@ -1,42 +1,47 @@
-import React, { useRef, useEffect } from "react";
-import { ChatMessage, ChatMessageProps } from "./ChatMessage";
+import React from "react";
+import { ChatMessage } from "./ChatMessage";
 
-export interface ChatContainerProps {
-  messages: ChatMessageProps[];
-  loading?: boolean;
-  error?: string;
+interface Message {
+  role: "user" | "assistant";
+  content: string;
 }
 
-export const ChatContainer: React.FC<ChatContainerProps> = ({
-  messages,
-  loading,
-  error,
-}) => {
-  const bottomRef = useRef<HTMLDivElement>(null);
+// タグを除去してメッセージを抽出する関数
+const cleanMessage = (rawMessage: string): Message[] => {
+  // タグでメッセージを分割
+  const pattern = /<\|User\|>(.*?)<\|Assistant\|>(.*)/s;
+  const match = rawMessage.match(pattern);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  if (!match) return [];
+
+  const [_, userContent, assistantContent] = match;
+  return [
+    // ユーザーメッセージ
+    { role: "user", content: userContent.trim() },
+    // アシスタントメッセージ
+    { role: "assistant", content: assistantContent.trim() },
+  ];
+};
+
+interface ChatContainerProps {
+  output: string[];
+}
+
+export const ChatContainer: React.FC<ChatContainerProps> = ({ output }) => {
+  // outputの各要素からメッセージを抽出し、タグを除去
+  const messages = output.flatMap(cleanMessage);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {messages.map((msg, idx) => (
-        <ChatMessage key={idx} {...msg} />
+    <div className="flex flex-col space-y-4">
+      {messages.map((message, index) => (
+        <ChatMessage
+          key={index}
+          role={message.role}
+          content={message.content}
+        />
       ))}
-
-      {loading && (
-        <div className="flex justify-center items-center p-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 bg-red-100 text-red-700 rounded-lg dark:bg-red-900 dark:text-red-100">
-          {error}
-        </div>
-      )}
-
-      <div ref={bottomRef} />
     </div>
   );
 };
+
+export default ChatContainer;
