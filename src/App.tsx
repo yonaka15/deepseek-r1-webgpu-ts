@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ProgressBar from "@/components/ProgressBar";
 import { cleanMessageHistory, processMessage } from "@/lib/response";
 import type { MessageState, WorkerStatus, Message } from "@/types";
 
@@ -13,10 +14,15 @@ const App: React.FC = () => {
   const [workerStatus, setWorkerStatus] =
     useState<WorkerStatus>("initializing");
   const [thinkingContent, setThinkingContent] = useState<string>("");
+  const [loadingProgress, setLoadingProgress] = useState<{
+    progress: number;
+    fileName: string;
+    fileSize: number;
+  } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Worker初期化
+  // Worker initialization
   useEffect(() => {
     let mounted = true;
     console.log("Initializing worker...");
@@ -46,11 +52,29 @@ const App: React.FC = () => {
         case "ready":
           setWorkerStatus("ready");
           setIsLoading(false);
+          setLoadingProgress(null);
           break;
 
         case "loading":
           setWorkerStatus("loading");
           setIsLoading(true);
+          break;
+
+        case "progress":
+          if (e.data.file && e.data.progress) {
+            // 1%単位で丸めて、変化が大きい時だけ更新
+            const roundedProgress = Math.round(e.data.progress);
+            setLoadingProgress((prev) => {
+              if (!prev || Math.abs(prev.progress - roundedProgress) >= 1) {
+                return {
+                  progress: roundedProgress,
+                  fileName: e.data.file,
+                  fileSize: 1.28, // 1.28 GB
+                };
+              }
+              return prev;
+            });
+          }
           break;
 
         case "start":
@@ -60,7 +84,7 @@ const App: React.FC = () => {
 
         case "update":
           if (output) {
-            // 出力を累積的に追加
+            // Accumulate output
             setThinkingContent((prev) => prev + output);
           }
           break;
@@ -86,7 +110,7 @@ const App: React.FC = () => {
       }
     };
 
-    // エラーハンドラ
+    // Error handler
     const handleWorkerError = (error: ErrorEvent) => {
       console.error("Worker error:", error);
       if (mounted) {
@@ -109,7 +133,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // メッセージ送信
+  // Send message
   const handleSendMessage = useCallback(
     (content: string) => {
       if (!workerRef.current || isLoading) {
@@ -126,7 +150,7 @@ const App: React.FC = () => {
 
       setMessages((prev) => [...prev, newMessage]);
 
-      // メッセージ履歴をクリーンアップしてから送信
+      // Clean message history before sending
       const messageHistory: Message[] = [...messages, newMessage].map(
         (msg) => ({
           role: msg.role,
@@ -148,7 +172,7 @@ const App: React.FC = () => {
     [messages, isLoading]
   );
 
-  // 生成停止
+  // Stop generation
   const handleStop = useCallback(() => {
     if (!workerRef.current || !isLoading) return;
     workerRef.current.postMessage({ type: "interrupt" });
@@ -161,7 +185,7 @@ const App: React.FC = () => {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             DeepSeek-R1
             <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-              1.5B parameters • 1.28GB
+              1.5B parameters
             </span>
           </h1>
           <div className="mt-1 text-sm text-gray-600 dark:text-gray-300 font-mono flex items-center gap-2">
@@ -194,6 +218,17 @@ const App: React.FC = () => {
           </span>
         </div>
       </header>
+
+      {/* Progress bar */}
+      {loadingProgress && (
+        <div className="border-b border-gray-200 dark:border-gray-800">
+          <ProgressBar
+            progress={loadingProgress.progress}
+            fileName={loadingProgress.fileName}
+            fileSize={loadingProgress.fileSize}
+          />
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
