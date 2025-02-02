@@ -13,36 +13,12 @@ import {
   type Tensor,
 } from "@huggingface/transformers";
 
-// Types for messages
-type WorkerMessageType = "check" | "load" | "generate" | "interrupt" | "reset";
-
-export interface WorkerMessage {
-  type: WorkerMessageType;
-  data?: unknown;
-}
-
-export interface LoadingStatus {
-  status: "loading" | "initiate" | "progress" | "done" | "error" | "ready";
-  file?: string;
-  progress?: number;
-  total?: number;
-  data?: string;
-  error?: string;
-}
-
-export interface GenerationStatus {
-  status: "update" | "start" | "complete" | "error";
-  output?: string | string[];
-  tps?: number;
-  numTokens?: number;
-  state?: "thinking" | "answering";
-  error?: string;
-}
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+import type {
+  WorkerMessage,
+  LoadingStatus,
+  GenerationStatus,
+  Message,
+} from "./types";
 
 interface TokenizerOutput {
   input_ids: Tensor;
@@ -147,7 +123,7 @@ const stopping_criteria_list = new StoppingCriteriaList();
 const interruptable_criteria = new InterruptableStoppingCriteria();
 stopping_criteria_list.push(interruptable_criteria);
 
-async function generate(messages: ChatMessage[]): Promise<void> {
+async function generate(messages: Message[]): Promise<void> {
   try {
     debugLog("Starting generation with messages:", messages);
 
@@ -347,7 +323,7 @@ self.addEventListener("message", async (event: MessageEvent<WorkerMessage>) => {
       case "generate":
         interruptable_criteria.reset();
         if (Array.isArray(data)) {
-          await generate(data as ChatMessage[]);
+          await generate(data as Message[]);
         } else {
           throw new Error("Invalid message data for generate command");
         }

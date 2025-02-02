@@ -2,18 +2,9 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AlertCircle } from "lucide-react";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
-import ThinkingMessage from "./components/ThinkingMessage";
-import type { ChatMessageProps } from "./components/ChatMessage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-type WorkerStatus = "initializing" | "ready" | "loading" | "error";
-
-interface MessageState {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  status: "complete" | "thinking" | "raw";
-}
+import { cleanMessageHistory, processMessage } from "@/lib/response";
+import type { MessageState, WorkerStatus, Message } from "@/types";
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<MessageState[]>([]);
@@ -69,6 +60,7 @@ const App: React.FC = () => {
 
         case "update":
           if (output) {
+            // 出力を累積的に追加
             setThinkingContent((prev) => prev + output);
           }
           break;
@@ -77,11 +69,13 @@ const App: React.FC = () => {
           setIsLoading(false);
           if (output) {
             const finalOutput = Array.isArray(output) ? output[0] : output;
+            const { thinking, answer } = processMessage(finalOutput);
+            const completedContent = `<think>${thinking}</think>\n${answer}`;
             setMessages((prev) => [
               ...prev,
               {
                 role: "assistant",
-                content: finalOutput,
+                content: completedContent,
                 timestamp: new Date().toLocaleTimeString(),
                 status: "complete",
               },
@@ -102,14 +96,10 @@ const App: React.FC = () => {
       }
     };
 
-    // イベントリスナーを設定
     worker.addEventListener("message", handleWorkerMessage);
     worker.addEventListener("error", handleWorkerError);
-
-    // WebGPUサポートチェック
     worker.postMessage({ type: "check" });
 
-    // クリーンアップ
     return () => {
       mounted = false;
       worker.removeEventListener("message", handleWorkerMessage);
@@ -129,24 +119,26 @@ const App: React.FC = () => {
 
       const newMessage: MessageState = {
         role: "user",
-        content: content,
+        content,
         timestamp: new Date().toLocaleTimeString(),
         status: "raw",
       };
 
       setMessages((prev) => [...prev, newMessage]);
 
-      const messageHistory = [...messages, { role: "user", content }].map(
+      // メッセージ履歴をクリーンアップしてから送信
+      const messageHistory: Message[] = [...messages, newMessage].map(
         (msg) => ({
           role: msg.role,
           content: msg.content,
         })
       );
+      const cleanHistory = cleanMessageHistory(messageHistory);
 
       try {
         workerRef.current.postMessage({
           type: "generate",
-          data: messageHistory,
+          data: cleanHistory,
         });
       } catch (err) {
         console.error("Failed to send message to worker:", err);
@@ -202,7 +194,12 @@ const App: React.FC = () => {
           ))}
 
           {isLoading && thinkingContent && (
-            <ThinkingMessage content={thinkingContent} />
+            <ChatMessage
+              role="assistant"
+              content={thinkingContent}
+              timestamp={new Date().toLocaleTimeString()}
+              isStreaming={true}
+            />
           )}
 
           {error && (

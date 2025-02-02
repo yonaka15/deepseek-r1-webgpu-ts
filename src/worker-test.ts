@@ -1,11 +1,56 @@
 type WorkerStatus = "ready" | "loading" | "generating" | "error";
 
+interface TestCase {
+  name: string;
+  messages: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
+}
+
 class WorkerTester {
   private worker: Worker;
-  private outputDiv!: HTMLElement; // '!' で初期化を保証
-  private statusDiv!: HTMLElement; // '!' で初期化を保証
-  private generateBtn!: HTMLButtonElement; // '!' で初期化を保証
-  private interruptBtn!: HTMLButtonElement; // '!' で初期化を保証
+  private outputDiv!: HTMLElement;
+  private statusDiv!: HTMLElement;
+  private generateBtn!: HTMLButtonElement;
+  private interruptBtn!: HTMLButtonElement;
+  private testSimpleBtn!: HTMLButtonElement;
+  private testFollowUpBtn!: HTMLButtonElement;
+
+  private readonly TEST_CASES: TestCase[] = [
+    {
+      name: "Simple Test",
+      messages: [
+        {
+          role: "user",
+          content: "Solve the equation x^2 - 3x + 2 = 0",
+        },
+      ],
+    },
+    {
+      name: "Follow-up Test",
+      messages: [
+        {
+          role: "user",
+          content: "Solve the equation x^2 - 3x + 2 = 0",
+        },
+        {
+          role: "assistant",
+          content:
+            // 下記のようにOutputをそのままContentにすると、正しい形式のOuputが得られない
+            //"<｜User｜>Solve the equation x^2 - 3x + 2 = 0<｜Assistant｜><think>\nTo solve the quadratic equation \\( x^2 - 3x + 2 = 0 \\), I'll start by factoring the left-hand side. I need two numbers that multiply to 2 and add up to -3. These numbers are -1 and -2.\n\nNext, I'll rewrite the equation as \\( (x - 1)(x - 2) = 0 \\). \n\nUsing the zero product property, I'll set each factor equal to zero:\n1. \\( x - 1 = 0 \\) leads to \\( x = 1 \\).\n2. \\( x - 2 = 0 \\) leads to \\( x = 2 \\).\n\nTherefore, the solutions to the equation are \\( x = 1 \\) and \\( x = 2 \\).\n</think>\n\nTo solve the quadratic equation:\n\n\\[\nx^2 - 3x + 2 = 0\n\\]\n\n**Step 1: Factor the Quadratic**\n\nWe look for two numbers that multiply to \\( +2 \\) and add up to \\( -3 \\). These numbers are \\( -1 \\) and \\( -2 \\).\n\n\\[\nx^2 - 3x + 2 = (x - 1)(x - 2) = 0\n\\]\n\n**Step 2: Apply the Zero Product Property**\n\nIf the product of two factors is zero, at least one of the factors must be zero.\n\n\\[\nx - 1 = 0 \\quad \\text{or} \\quad x - 2 = 0\n\\]\n\n**Step 3: Solve for \\( x \\)**\n\n\\[\nx = 1 \\quad \\text{or} \\quad x = 2\n\\]\n\n**Final Answer:**\n\n\\[\n\\boxed{1 \\text{ and } 2}\n\\]",
+
+            // 以下のように前のメッセージのAnswerのみをContentにすると、正しい形式のOuputが得られる
+            "To solve the quadratic equation:\n\n\\[\nx^2 - 3x + 2 = 0\n\\]\n\n**Step 1: Factor the Quadratic**\n\nWe look for two numbers that multiply to \\( +2 \\) and add up to \\( -3 \\). These numbers are \\( -1 \\) and \\( -2 \\).\n\n\\[\nx^2 - 3x + 2 = (x - 1)(x - 2) = 0\n\\]\n\n**Step 2: Apply the Zero Product Property**\n\nIf the product of two factors is zero, at least one of the factors must be zero.\n\n\\[\nx - 1 = 0 \\quad \\text{or} \\quad x - 2 = 0\n\\]\n\n**Step 3: Solve for \\( x \\)**\n\n\\[\nx = 1 \\quad \\text{or} \\quad x = 2\n\\]\n\n**Final Answer:**\n\n\\[\n\\boxed{1 \\text{ and } 2}\n\\]",
+        },
+        {
+          role: "user",
+          content:
+            "Can you verify these solutions by substituting them back into the original equation?",
+        },
+      ],
+    },
+  ];
 
   constructor() {
     this.worker = new Worker(new URL("./worker.ts", import.meta.url), {
@@ -21,8 +66,17 @@ class WorkerTester {
     const statusDiv = document.getElementById("status");
     const generateBtn = document.getElementById("generateBtn");
     const interruptBtn = document.getElementById("interruptBtn");
+    const testSimpleBtn = document.getElementById("testSimpleBtn");
+    const testFollowUpBtn = document.getElementById("testFollowUpBtn");
 
-    if (!outputDiv || !statusDiv || !generateBtn || !interruptBtn) {
+    if (
+      !outputDiv ||
+      !statusDiv ||
+      !generateBtn ||
+      !interruptBtn ||
+      !testSimpleBtn ||
+      !testFollowUpBtn
+    ) {
       throw new Error("Required elements not found");
     }
 
@@ -30,6 +84,8 @@ class WorkerTester {
     this.statusDiv = statusDiv;
     this.generateBtn = generateBtn as HTMLButtonElement;
     this.interruptBtn = interruptBtn as HTMLButtonElement;
+    this.testSimpleBtn = testSimpleBtn as HTMLButtonElement;
+    this.testFollowUpBtn = testFollowUpBtn as HTMLButtonElement;
   }
 
   private setupWorkerHandlers(): void {
@@ -41,6 +97,8 @@ class WorkerTester {
         case "ready":
           this.updateStatus("ready");
           this.generateBtn.disabled = false;
+          this.testSimpleBtn.disabled = false;
+          this.testFollowUpBtn.disabled = false;
           break;
         case "error":
           this.updateStatus("error");
@@ -85,7 +143,7 @@ class WorkerTester {
       const messages = [
         {
           role: "user" as const,
-          content: "Solve the equation x^2 - 3x + 2 = 0",
+          content: "Hello! Can you help me with a math problem?",
         },
       ];
       this.log("Generating text with message:", messages);
@@ -102,6 +160,18 @@ class WorkerTester {
       this.worker.postMessage({ type: "reset" });
       this.outputDiv.textContent = "";
       this.updateStatus("ready");
+    });
+
+    this.testSimpleBtn.addEventListener("click", () => {
+      const testCase = this.TEST_CASES[0];
+      this.log(`Running test: ${testCase.name}`);
+      this.worker.postMessage({ type: "generate", data: testCase.messages });
+    });
+
+    this.testFollowUpBtn.addEventListener("click", () => {
+      const testCase = this.TEST_CASES[1];
+      this.log(`Running test: ${testCase.name}`);
+      this.worker.postMessage({ type: "generate", data: testCase.messages });
     });
   }
 

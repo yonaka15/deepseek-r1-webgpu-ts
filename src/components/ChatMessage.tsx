@@ -1,50 +1,28 @@
 import React, { useState } from "react";
 import { Bot, User, Brain, ChevronDown, ChevronRight } from "lucide-react";
+import { processMessage } from "@/lib/response";
+import type { Message } from "@/types";
 
 const MarkdownContent = React.lazy(() => import("./MarkdownContent"));
 
-export interface ChatMessageProps {
-  role: "user" | "assistant";
-  content: string;
+export interface ChatMessageProps extends Message {
   timestamp?: string;
+  isStreaming?: boolean;
 }
-
-// メッセージを前処理する関数
-const processContent = (
-  content: string
-): {
-  thinking: string;
-  response: string;
-} => {
-  // タグとユーザーメッセージを削除
-  content = content
-    .replace(/<｜User｜>.*?<｜Assistant｜>/s, "") // ユーザーメッセージを含むタグを削除
-    .replace(/<｜Assistant｜>/g, "") // 残りのAssistantタグを削除
-    .trim();
-
-  // 思考プロセスの抽出
-  const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
-  const thinking = thinkMatch ? thinkMatch[1].trim() : "";
-
-  // レスポンスから<think>タグを除去
-  let response = content.replace(/<think>[\s\S]*?<\/think>/, "").trim();
-
-  return {
-    thinking: thinking || "",
-    response: response || content.trim(),
-  };
-};
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
   timestamp = new Date().toLocaleTimeString(),
+  isStreaming = false,
 }) => {
   const [showProcess, setShowProcess] = useState(false);
   const isAssistant = role === "assistant";
 
-  // コンテンツを処理
-  const { thinking, response } = processContent(content);
+  const { thinking, answer } = isStreaming
+    ? { thinking: content, answer: "" }
+    : processMessage(content);
+
   const hasThinkingProcess = isAssistant && thinking.length > 0;
 
   return (
@@ -112,7 +90,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           >
             <div className="prose max-w-none">
               <React.Suspense fallback={<div>Loading...</div>}>
-                <MarkdownContent content={response} />
+                <MarkdownContent content={answer} />
               </React.Suspense>
             </div>
           </div>

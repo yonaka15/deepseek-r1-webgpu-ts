@@ -48,6 +48,14 @@
         border-radius: 4px;
         background: #e8f5e9;
       }
+      .test-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .test-buttons button {
+        flex: 1;
+      }
     </style>
   </head>
   <body>
@@ -59,6 +67,10 @@
         <button id="generateBtn" disabled>Generate Text</button>
         <button id="interruptBtn" disabled>Interrupt</button>
         <button id="resetBtn">Reset</button>
+      </div>
+      <div class="test-buttons">
+        <button id="testSimpleBtn" disabled>Simple Test</button>
+        <button id="testFollowUpBtn" disabled>Follow-up Test</button>
       </div>
       <div id="status" class="status">Status: Ready</div>
       <div id="output" class="output"></div>
