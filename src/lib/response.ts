@@ -4,14 +4,13 @@ import type { Message } from "@/types";
  * システムタグと思考プロセスを除去して実際の応答部分を抽出する
  */
 export const extractAnswer = (content: string): string => {
-  // システムタグを除去
-  let processed = content
-    .replace(/<｜User｜>.*?<｜Assistant｜>/s, "")
-    .replace(/<｜Assistant｜>/g, "")
-    .trim();
+  // <｜Assistant｜>タグで分割し、最後の部分を取得
+  const assistantParts = content.split(/<｜Assistant｜>/);
+  const lastPart = assistantParts[assistantParts.length - 1];
 
-  // 思考プロセスを除去
-  processed = processed.replace(/<think>[\s\S]*?<\/think>/, "").trim();
+  // 思考プロセスを除去して整形
+  let processed = lastPart.trim();
+  processed = processed.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 
   return processed;
 };

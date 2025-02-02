@@ -56,7 +56,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <div className="rounded-lg border border-gray-200">
               <button
                 onClick={() => setShowProcess(!showProcess)}
-                className="w-full px-4 py-2 flex items-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors"
+                className="w-full px-4 py-2 flex items-center gap-2 bg-gray-200 hover:bg-gray-300 transition-colors"
               >
                 <Brain className="w-4 h-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">
@@ -70,7 +70,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </button>
 
               {showProcess && (
-                <div className="p-4 bg-white">
+                <div className="p-4 bg-gray-100">
                   <div className="prose max-w-none">
                     <React.Suspense fallback={<div>Loading...</div>}>
                       <MarkdownContent content={thinking} />
