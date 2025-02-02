@@ -157,12 +157,25 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            DeepSeek Chat
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            DeepSeek-R1
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+              1.5B parameters • 1.28GB
+            </span>
           </h1>
+          <div className="mt-1 text-sm text-gray-600 dark:text-gray-300 font-mono flex items-center gap-2">
+            <a
+              href="https://huggingface.co/onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              <span>onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX</span> 🤗
+            </a>
+          </div>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Powered by WebGPU
+            Powered by WebGPU • ONNX optimized • Qwen2.5 architecture
           </p>
         </div>
 
