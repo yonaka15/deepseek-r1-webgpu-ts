@@ -2,8 +2,6 @@
 
 A TypeScript port of [deepseek-r1-webgpu](https://github.com/huggingface/transformers.js-examples/tree/main/deepseek-r1-webgpu), implementing the DeepSeek-R1 model that runs directly in the browser using WebGPU.
 
-[Try the original demo](https://huggingface.co/spaces/webml-community/deepseek-r1-webgpu)
-
 ## Features
 
 - 🚀 Full TypeScript support with proper type definitions
@@ -91,6 +89,21 @@ This application requires WebGPU support. Currently, this means:
 - Other browsers with experimental WebGPU support
 
 Please check [caniuse.com](https://caniuse.com/webgpu) for up-to-date browser support information.
+
+## Model Details
+
+DeepSeek-R1-Distill-Qwen-1.5B is a distilled version of the larger DeepSeek-R1 model, specifically optimized for ONNX runtime. Key features:
+
+- Size: 1.5 billion parameters
+- Model Format: ONNX optimized
+- Loading Size: 1.28GB
+- Base Architecture: Derived from Qwen-2.5 series
+- License: MIT License (allows commercial use and modifications)
+- Capabilities:
+  - Strong mathematical reasoning
+  - Step-by-step problem solving
+  - Support for chain-of-thought prompting
+  - Specialized in educational and analytical tasks
 
 ## Contributing
 
