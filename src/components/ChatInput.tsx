@@ -79,7 +79,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             className={`w-full resize-none rounded-lg py-3 pl-4 pr-12 ${
               disabled
                 ? "bg-gray-100 dark:bg-gray-800 text-gray-500"
-                : "bg-white dark:bg-gray-900"
+                : "bg-white dark:bg-gray-900 dark:text-white"
             } border border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20`}
             rows={1}
             style={{
